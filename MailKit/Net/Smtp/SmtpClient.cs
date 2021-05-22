@@ -1903,7 +1903,7 @@ namespace MailKit.Net.Smtp {
 			}
 		}
 
-		async Task BdatAsync (FormatOptions options, MimeMessage message, long size, bool doAsync, CancellationToken cancellationToken, ITransferProgress progress)
+		async Task<string> BdatAsync (FormatOptions options, MimeMessage message, long size, bool doAsync, CancellationToken cancellationToken, ITransferProgress progress)
 		{
 			SmtpResponse response;
 			byte[] bytes;
@@ -1947,11 +1947,11 @@ namespace MailKit.Net.Smtp {
 				throw new ServiceNotAuthenticatedException (response.Response);
 			case SmtpStatusCode.Ok:
 				OnMessageSent (new MessageSentEventArgs (message, response.Response));
-				break;
+				return response.Response;
 			}
 		}
 
-		async Task DataAsync (FormatOptions options, MimeMessage message, long size, bool doAsync, CancellationToken cancellationToken, ITransferProgress progress)
+		async Task<string> DataAsync (FormatOptions options, MimeMessage message, long size, bool doAsync, CancellationToken cancellationToken, ITransferProgress progress)
 		{
 			var response = await SendCommandAsync ("DATA", doAsync, cancellationToken).ConfigureAwait (false);
 
@@ -2007,7 +2007,7 @@ namespace MailKit.Net.Smtp {
 				throw new ServiceNotAuthenticatedException (response.Response);
 			case SmtpStatusCode.Ok:
 				OnMessageSent (new MessageSentEventArgs (message, response.Response));
-				break;
+				return response.Response;
 			}
 		}
 
@@ -2106,7 +2106,7 @@ namespace MailKit.Net.Smtp {
 			return GetSizeAsync (options, message, true, cancellationToken);
 		}
 
-		async Task SendAsync (FormatOptions options, MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, bool doAsync, CancellationToken cancellationToken, ITransferProgress progress)
+		async Task<string> SendAsync (FormatOptions options, MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, bool doAsync, CancellationToken cancellationToken, ITransferProgress progress)
 		{
 			CheckDisposed ();
 
@@ -2174,9 +2174,9 @@ namespace MailKit.Net.Smtp {
 				}
 
 				if ((extensions & SmtpExtension.BinaryMime) != 0 || (PreferSendAsBinaryData && (Capabilities & SmtpCapabilities.BinaryMime) != 0))
-					await BdatAsync (format, message, size, doAsync, cancellationToken, progress).ConfigureAwait (false);
-				else
-					await DataAsync (format, message, size, doAsync, cancellationToken, progress).ConfigureAwait (false);
+					return await BdatAsync (format, message, size, doAsync, cancellationToken, progress).ConfigureAwait (false);
+
+				return await DataAsync (format, message, size, doAsync, cancellationToken, progress).ConfigureAwait (false);
 			} catch (ServiceNotAuthenticatedException) {
 				// do not disconnect
 				throw;
@@ -2204,6 +2204,7 @@ namespace MailKit.Net.Smtp {
 		/// <example>
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="SendMessageWithOptions"/>
 		/// </example>
+		/// <returns>The final free-form text response from the server.</returns>
 		/// <param name="options">The formatting options.</param>
 		/// <param name="message">The message.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
@@ -2242,7 +2243,7 @@ namespace MailKit.Net.Smtp {
 		/// <exception cref="SmtpProtocolException">
 		/// An SMTP protocol exception occurred.
 		/// </exception>
-		public override void Send (FormatOptions options, MimeMessage message, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public override string Send (FormatOptions options, MimeMessage message, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
 		{
 			if (options == null)
 				throw new ArgumentNullException (nameof (options));
@@ -2259,7 +2260,7 @@ namespace MailKit.Net.Smtp {
 			if (recipients.Count == 0)
 				throw new InvalidOperationException ("No recipients have been specified.");
 
-			SendAsync (options, message, sender, recipients, false, cancellationToken, progress).GetAwaiter ().GetResult ();
+			return SendAsync (options, message, sender, recipients, false, cancellationToken, progress).GetAwaiter ().GetResult ();
 		}
 
 		/// <summary>
@@ -2268,6 +2269,7 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Sends the message by uploading it to an SMTP server using the supplied sender and recipients.
 		/// </remarks>
+		/// <returns>The final free-form text response from the server.</returns>
 		/// <param name="options">The formatting options.</param>
 		/// <param name="message">The message.</param>
 		/// <param name="sender">The mailbox address to use for sending the message.</param>
@@ -2312,7 +2314,7 @@ namespace MailKit.Net.Smtp {
 		/// <exception cref="SmtpProtocolException">
 		/// An SMTP protocol exception occurred.
 		/// </exception>
-		public override void Send (FormatOptions options, MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public override string Send (FormatOptions options, MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
 		{
 			if (options == null)
 				throw new ArgumentNullException (nameof (options));
@@ -2334,7 +2336,7 @@ namespace MailKit.Net.Smtp {
 			if (rcpts.Count == 0)
 				throw new InvalidOperationException ("No recipients have been specified.");
 
-			SendAsync (options, message, sender, rcpts, false, cancellationToken, progress).GetAwaiter ().GetResult ();
+			return SendAsync (options, message, sender, rcpts, false, cancellationToken, progress).GetAwaiter ().GetResult ();
 		}
 
 		#endregion
